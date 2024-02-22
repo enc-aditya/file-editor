@@ -1,1 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
 
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple File Editor</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap');
+
+    * {
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+      font-family: "Ubuntu", sans-serif;
+    }
+
+    body {
+      font-family: "Ubuntu", sans-serif;
+      margin: 20px;
+      background-color: #f2f2f2;
+      color: #333;
+      user-select: none;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .input-group {
+      margin-bottom: 10px;
+    }
+
+    .btn {
+      padding: 8px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #555;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      margin-right: 10px;
+      transition: 0.3s;
+      margin-top: 5px;
+    }
+
+    .btn:hover {
+      background-color: #777;
+    }
+
+    .btn:active {
+      background-color: #131313;
+    }
+
+    #editor {
+      width: 97%;
+      height: 200px;
+      margin-bottom: 10px;
+      padding: 6px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      resize: none;
+    }
+
+    #fileInfo {
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    #countInfo {
+      font-size: 14px;
+      margin-top: 10px;
+    }
+
+    .form-input {
+      padding: 8px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      width: 96%;
+    }
+
+    .dark-mode {
+      background-color: #333;
+      color: #fff;
+    }
+
+    .dark-mode .container {
+      background-color: #222;
+      color: #fff;
+    }
+
+    .dark-mode .btn {
+      background-color: #777;
+      color: #fff;
+    }
+
+    .dark-mode .form-input {
+      background-color: #444;
+    }
+
+    .dark-mode #editor {
+      background-color: #444;
+      color: #fff;
+      border-color: #888;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <h2>Simple File Editor</h2>
+    <button class="btn" onclick="importFile()">Import</button> <button class="btn" onclick="pasteText()">Paste</button> <button class="btn" onclick="saveFile()">Save</button><button class="btn btn-dark-mode" onclick="toggleDarkMode()">Toggle Dark Mode</button><br><br>
+    <div class="input-group">
+      <label for="fileName">File Name:</label>
+      <input type="text" id="fileName" class="form-input" placeholder="Enter file name">
+    </div>
+
+    <textarea id="editor" rows="10" oninput="saveState(); updateCountInfo()" placeholder="File Content..."></textarea>
+
+    <div class="input-group">
+
+      <button class="btn" onclick="clearEditor()">Clear</button>
+      <button class="btn" onclick="undo()">Undo</button>
+      <button class="btn" onclick="redo()">Redo</button>
+      <button class="btn" onclick="selectAll()">Select All</button>
+
+      <button class="btn" onclick="copyText()">Copy</button>
+      <button class="btn" onclick="cutText()">Cut</button>
+
+    </div>
+
+    <div id="fileInfo"></div>
+    <div id="countInfo"></div>
+  </div>
+
+  <script>
+    let darkMode = false;
+
+    function toggleDarkMode() {
+      darkMode = !darkMode;
+      document.body.classList.toggle("dark-mode");
+      updateButtonText();
+    }
+
+    function updateButtonText() {
+      const button = document.querySelector(".btn-dark-mode");
+      if (darkMode) {
+        button.textContent = "Toggle Light Mode";
+      } else {
+        button.textContent = "Toggle Dark Mode";
+      }
+    }
+
+    let editorHistory = [];
+    let currentPosition = -1;
+
+    function saveState() {
+      let editorValue = document.getElementById('editor').value;
+      if (editorHistory[currentPosition] !== editorValue) {
+        editorHistory = editorHistory.slice(0, currentPosition + 1);
+        editorHistory.push(editorValue);
+        currentPosition++;
+      }
+    }
+
+
+    function copyText() {
+      let editor = document.getElementById('editor');
+      editor.select();
+      document.execCommand('copy');
+    }
+
+    function cutText() {
+      let editor = document.getElementById('editor');
+      editor.select();
+      document.execCommand('cut');
+    }
+
+    function undo() {
+      if (currentPosition > 0) {
+        currentPosition--;
+        document.getElementById('editor').value = editorHistory[currentPosition];
+        updateCountInfo();
+      }
+    }
+
+    function redo() {
+      if (currentPosition < editorHistory.length - 1) {
+        currentPosition++;
+        document.getElementById('editor').value = editorHistory[currentPosition];
+        updateCountInfo();
+      }
+    }
+
+
+    function updateCountInfo() {
+      let text = document.getElementById('editor').value;
+      let wordCount = text.split(/\s+/).filter(function(word) {
+        return word.length > 0;
+      }).length;
+      let alphabetCount = text.replace(/[^a-zA-Z]/g, '').length;
+      document.getElementById('countInfo').innerText = "Word Count: " + wordCount + " • Alphabet Count: " + alphabetCount;
+    }
+
+    function saveFile() {
+      let textToSave = document.getElementById('editor').value;
+      let fileName = document.getElementById('fileName').value;
+      if (!fileName) {
+        alert("Please enter a file name.");
+        return;
+      }
+
+      if (!fileName.includes(".")) {
+        fileName += ".txt";
+      }
+
+
+      let blob = new Blob([textToSave], { type: "text/plain;charset=utf-8" });
+      let url = window.URL.createObjectURL(blob);
+      let a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    }
+
+    function importFile() {
+      let fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.onchange = function(event) {
+        let file = event.target.files[0];
+        let reader = new FileReader();
+        reader.onload = function(event) {
+          document.getElementById('editor').value = event.target.result;
+          updateFileInfo(file.name);
+          saveState();
+          updateCountInfo();
+        };
+        reader.readAsText(file);
+      };
+      fileInput.click();
+    }
+
+    function selectAll() {
+      document.getElementById('editor').select();
+    }
+
+    function pasteText() {
+      navigator.clipboard.readText()
+        .then(text => {
+          document.getElementById('editor').value += text;
+          updateCountInfo();
+        })
+        .catch(err => {
+          console.error('Failed to read clipboard contents: ', err);
+        });
+    }
+
+    function clearEditor() {
+      document.getElementById('editor').value = '';
+      document.getElementById('fileName').value = '';
+      document.getElementById('fileInfo').innerText = '';
+      document.getElementById('countInfo').innerText = '';
+      editorHistory = [];
+      currentPosition = -1;
+      updateCountInfo();
+    }
+
+    function updateFileInfo(fileName) {
+      let fileSize = document.getElementById('editor').value.length + " bytes";
+      document.getElementById('fileInfo').innerText = "File Name: " + fileName + " • File Size: " + fileSize;
+      document.getElementById('fileName').value = fileName;
+    }
+
+    updateCountInfo();
+  </script>
+</body>
+
+</html>
